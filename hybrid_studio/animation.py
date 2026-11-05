@@ -8,25 +8,24 @@ created correctly by Blender itself.
 
 import math
 
-from ._bpyutil import require_bpy
+from ._bpyutil import require_bpy, collect_fcurves
 from .studio_log import get_logger
 
 log = get_logger("hybrid_studio.animation")
 
 
 def _iter_fcurves(action):
-    """Yield fcurves from both legacy and layered (4.4+/5.x) actions."""
-    legacy = getattr(action, "fcurves", None)
-    if legacy:
-        for fc in legacy:
-            yield fc
-        return
-    for layer in getattr(action, "layers", []):
-        for strip in getattr(layer, "strips", []):
-            channelbag = getattr(strip, "channelbag", None)
-            if channelbag is not None:
-                for fc in channelbag.fcurves:
-                    yield fc
+    """Yield fcurves from both legacy and layered (4.4+/5.x) actions.
+
+    Delegates to the shared compatibility layer
+    (:func:`hybrid_studio._bpyutil.collect_fcurves`), which handles the
+    Blender 5.2.3 shapes this module used to get wrong: the
+    ``strip.channelbags`` collection, the ``strip.channelbag(slot)``
+    *method* (a ``bpy_func`` - reading ``.fcurves`` on it raised
+    AttributeError), the legacy plain-property channelbag, and direct
+    ``action.fcurves``.
+    """
+    yield from collect_fcurves(action)
 
 
 def get_or_create_action(bpy, owner, name):
@@ -140,3 +139,4 @@ def set_frame_range(scene, start, end):
     scene.frame_start = start
     scene.frame_end = end
     return (start, end)
+
