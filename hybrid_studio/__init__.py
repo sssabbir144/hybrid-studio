@@ -28,3 +28,21 @@ __all__ = [
     "audio_video",
     "quality_control",
 ]
+
+
+def check_environment():
+    """Runtime Version Guard.
+
+    Raises RuntimeError immediately when the package is imported inside a
+    Blender build other than the tested 5.2.3 (major.minor must match;
+    see ``_bpyutil.check_blender_version``). Outside Blender this is a
+    no-op, so pure-Python tooling and tests can import the package freely.
+    """
+    from . import _bpyutil
+    if _bpyutil.has_bpy():
+        _bpyutil.check_blender_version()
+
+
+# Fail at startup, not mid-render: importing this package inside an
+# untested Blender build stops here with a clear error.
+check_environment()
