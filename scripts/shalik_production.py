@@ -297,7 +297,7 @@ def animate_characters(ma, bird):
     key(bird, 720, (0.52, 1.48, 1.32), (0.15, 0.0, 0.0))
 
 
-def setup_camera_and_lights():
+def setup_camera_and_lights(scene):
     cam = cinematography.create_camera("StoryCam", SHOTS[0][3], 40.0)
     cinematography.look_at(cam, SHOTS[0][4])
     target = bpy.data.objects.get("CameraTarget")
@@ -387,7 +387,7 @@ def main():
     for obj in (ma, bird):
         if obj.animation_data and obj.animation_data.action:
             anim.apply_easing(obj.animation_data.action)
-    setup_camera_and_lights()
+    setup_camera_and_lights(scene)
     from hybrid_studio import compositing
     compositing.setup_compositor(scene)
 
