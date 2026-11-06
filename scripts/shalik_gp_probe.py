@@ -125,7 +125,12 @@ def part_b(out_dir):
 
     s1 = gp._add_stroke(drawing, _circle(-0.55, 1.0, 0.35))
     s2 = gp._add_stroke(drawing, _circle(0.55, 1.0, 0.35))
-    for label, stroke, idx in (("s1", s1, 0), ("s2", s2, 1)):
+    # Use the REAL slot indices (slot 0 is the operator's default
+    # 'Black' material) - hardcoding 0/1 here was the probe's own
+    # off-by-one in the first Stage-3 run.
+    red_idx = list(data.materials).index(red)
+    blue_idx = list(data.materials).index(blue)
+    for label, stroke, idx in (("s1", s1, red_idx), ("s2", s2, blue_idx)):
         try:
             stroke.material_index = idx
             print("PROBE_B SET", label, "-> readback",
