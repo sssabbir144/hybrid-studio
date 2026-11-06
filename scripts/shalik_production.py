@@ -41,7 +41,7 @@ FRAME_END = 720  # 30 s at 24 fps
 # Shot plan: (name, start, end, cam_loc, target_loc, hero_frame)
 SHOTS = [
     ("S1_Dawn_Call",      1,   96,  (0.0, -6.2, 1.7),  (0.0, 0.7, 1.05), 48),
-    ("S2_Hand_Feeding",   97,  192, (0.8, -2.0, 1.45), (0.35, 1.25, 0.95), 144),
+    ("S2_Hand_Feeding",   97,  192, (0.95, -2.1, 1.45), (0.55, 1.25, 0.95), 144),
     ("S3_Days_Ritual",    193, 312, (-2.2, -4.6, 2.0), (0.0, 0.7, 1.1),  252),
     ("S4_Empty_Door",     313, 408, (0.2, -3.6, 1.5),  (-1.1, 1.6, 1.05), 360),
     ("S5_Window_Peck",    409, 528, (1.5, -2.3, 1.8),  (1.35, 2.0, 1.55), 468),
@@ -159,6 +159,17 @@ def _paint(obj, drawing, strokes_with_mat):
         stroke = gp._add_stroke(drawing, pts)
         try:
             stroke.material_index = mat_idx
+        except Exception:
+            pass
+        # Closed loops (heads, bodies) need cyclic=True or fills never
+        # render; open lines must stay open.
+        try:
+            if len(pts) > 2:
+                dx = pts[0][0] - pts[-1][0]
+                dy = pts[0][1] - pts[-1][1]
+                dz = pts[0][2] - pts[-1][2]
+                if dx * dx + dy * dy + dz * dz < 1e-8:
+                    stroke.cyclic = True
         except Exception:
             pass
     return data
@@ -293,8 +304,8 @@ def animate_characters(ma, bird):
     key(bird, 545, BIRD_HAND)                 # S6: comes down beside her
     key(bird, 576, BIRD_HAND, (0.35, 0.0, 0.0))          # head bowed
     key(bird, 648, BIRD_HAND, (0.35, 0.0, 0.0))
-    key(bird, 680, (0.52, 1.48, 1.32), (0.15, 0.0, 0.0))  # S7: her shoulder
-    key(bird, 720, (0.52, 1.48, 1.32), (0.15, 0.0, 0.0))
+    key(bird, 680, (0.62, 1.50, 1.42), (0.15, 0.0, 0.0))  # S7: her shoulder
+    key(bird, 720, (0.62, 1.50, 1.42), (0.15, 0.0, 0.0))
 
 
 def setup_camera_and_lights(scene):

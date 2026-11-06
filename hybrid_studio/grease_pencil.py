@@ -164,6 +164,16 @@ def _gp_material(bpy, gp_data, name, hex_color):
     if mat is None:
         mat = bpy.data.materials.new(name)
     gp_settings = getattr(mat, "grease_pencil", None)
+    if gp_settings is None:
+        # A plain material carries NO Grease Pencil style data until it
+        # is initialised; without this step the colours below silently
+        # never reach the renderer (Stage-3 probe, 2026-11-06: named GP
+        # materials in the saved scene had color=None / fill=None).
+        try:
+            bpy.data.materials.create_gpencil_data(mat)
+            gp_settings = getattr(mat, "grease_pencil", None)
+        except Exception as exc:
+            log.warning("create_gpencil_data failed for %r: %s", name, exc)
     if gp_settings is not None:
         gp_settings.color = hex_to_rgba(hex_color)
         gp_settings.fill_color = hex_to_rgba(hex_color, alpha=0.35)

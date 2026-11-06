@@ -88,7 +88,12 @@ def part_b(out_dir):
 
     bpy.ops.wm.read_factory_settings(use_empty=True)
     scene = bpy.context.scene
-    scene.render.engine = "BLENDER_EEVEE_NEXT"
+    for engine in ("BLENDER_EEVEE_NEXT", "BLENDER_EEVEE"):
+        try:
+            scene.render.engine = engine
+            break
+        except Exception:
+            continue
     scene.render.resolution_x = 320
     scene.render.resolution_y = 180
     scene.render.image_settings.file_format = "PNG"
