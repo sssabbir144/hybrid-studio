@@ -40,17 +40,29 @@ FRAME_END = 720  # 30 s at 24 fps
 
 # Shot plan: (name, start, end, cam_loc, target_loc, hero_frame)
 SHOTS = [
-    ("S1_Dawn_Call",      1,   96,  (0.0, -7.5, 1.9),  (0.0, 0.6, 1.0),  48),
-    ("S2_Hand_Feeding",   97,  192, (0.9, -2.4, 1.5),  (0.3, 1.2, 0.9),  144),
-    ("S3_Days_Ritual",    193, 312, (-2.6, -5.5, 2.2), (0.0, 0.6, 1.1),  252),
-    ("S4_Empty_Door",     313, 408, (0.4, -4.2, 1.6),  (-1.2, 2.0, 1.1), 360),
-    ("S5_Window_Peck",    409, 528, (1.7, -2.8, 1.9),  (1.4, 2.1, 1.6),  468),
-    ("S6_Last_Offering",  529, 648, (0.0, -4.6, 1.7),  (0.2, 1.0, 0.9),  576),
-    ("S7_Golden_Farewell", 649, 720, (0.0, -8.5, 3.0), (0.2, 1.0, 1.1),  690),
+    ("S1_Dawn_Call",      1,   96,  (0.0, -6.2, 1.7),  (0.0, 0.7, 1.05), 48),
+    ("S2_Hand_Feeding",   97,  192, (0.8, -2.0, 1.45), (0.35, 1.25, 0.95), 144),
+    ("S3_Days_Ritual",    193, 312, (-2.2, -4.6, 2.0), (0.0, 0.7, 1.1),  252),
+    ("S4_Empty_Door",     313, 408, (0.2, -3.6, 1.5),  (-1.1, 1.6, 1.05), 360),
+    ("S5_Window_Peck",    409, 528, (1.5, -2.3, 1.8),  (1.35, 2.0, 1.55), 468),
+    ("S6_Last_Offering",  529, 648, (0.0, -3.9, 1.6),  (0.25, 1.1, 0.95), 576),
+    ("S7_Golden_Farewell", 649, 720, (0.0, -7.0, 2.6), (0.2, 1.0, 1.1),  690),
 ]
 
+# Per-shot world mood: (hex colour, strength) - dawn warmth, ritual day,
+# cold absence, dim window, warm return, golden farewell.
+MOODS = {
+    "S1_Dawn_Call": ("#6B5636", 0.50),
+    "S2_Hand_Feeding": ("#7A6242", 0.55),
+    "S3_Days_Ritual": ("#5E6E52", 0.50),
+    "S4_Empty_Door": ("#3E4A5C", 0.45),
+    "S5_Window_Peck": ("#37424F", 0.42),
+    "S6_Last_Offering": ("#6E5638", 0.50),
+    "S7_Golden_Farewell": ("#8A5A26", 0.60),
+}
+
 VERANDA = (0.3, 1.55, 0.14)      # where Buri Ma sits
-BIRD_HAND = (0.78, 1.32, 0.62)   # beside her offering hand
+BIRD_HAND = (1.02, 1.24, 0.14)   # standing on the veranda floor by the bowl
 TREE_BRANCH = (-2.9, 0.4, 2.35)  # bird's home branch
 WINDOW_SILL = (1.4, 1.98, 1.24)  # S5 perch
 
@@ -135,28 +147,73 @@ def _line(points):
     return [(x, 0.0, z) for (x, z) in points]
 
 
+def _paint(obj, drawing, strokes_with_mat):
+    """Add strokes and force each stroke onto its material slot.
+
+    Stage-1 lesson: appending a GP material is not enough - strokes keep
+    material_index 0 (the default black). Set the index on every stroke,
+    and also tint any pre-existing slot materials as a fallback.
+    """
+    data = obj.data
+    for pts, mat_idx in strokes_with_mat:
+        stroke = gp._add_stroke(drawing, pts)
+        try:
+            stroke.material_index = mat_idx
+        except Exception:
+            pass
+    return data
+
+
+def _finish_gp_material(bpy, data, name, hex_color, fill_alpha=0.30):
+    """Create a GP material and make its fill actually show."""
+    mat = gp._gp_material(bpy, data, name, hex_color)
+    settings = getattr(mat, "grease_pencil", None)
+    if settings is not None:
+        try:
+            settings.fill_style = "SOLID"
+        except Exception:
+            pass
+        from hybrid_studio.character_manager import hex_to_rgba
+        try:
+            settings.fill_color = hex_to_rgba(hex_color, alpha=fill_alpha)
+        except Exception:
+            pass
+    idx = 0
+    try:
+        idx = list(data.materials).index(mat)
+    except Exception:
+        pass
+    return idx
+
+
 def build_buri_ma():
     """2D Grease Pencil character: seated old mother, white sari."""
     obj = gp.create_gp_object(bpy, "BuriMa")
     data = obj.data
     layer = gp._get_layer(data, "Figure")
     drawing = gp._get_drawing(layer, 1)
-    gp._gp_material(bpy, data, "BuriMa_Line", "#EDEAE2")
+    white = _finish_gp_material(bpy, data, "BuriMa_White", "#F2EEE3")
+    grey = _finish_gp_material(bpy, data, "BuriMa_Grey", "#B9B4A8")
     strokes = [
-        _circle(0.0, 1.30, 0.145),                      # head
-        _circle(0.10, 1.47, 0.05, 10),                  # hair bun
-        _line([(-0.13, 1.16), (0.13, 1.16)]),            # shoulders
-        _line([(-0.13, 1.16), (-0.34, 0.18)]),          # sari left drape
-        _line([(0.13, 1.16), (0.30, 0.18)]),            # sari right drape
-        _line([(-0.34, 0.18), (0.30, 0.18)]),           # seated base
-        _line([(-0.30, 0.45), (0.34, 0.45)]),           # lap fold
-        _line([(0.12, 1.05), (0.42, 0.62)]),            # offering arm
-        _line([(0.42, 0.62), (0.50, 0.60)]),            # open palm
-        _line([(-0.10, 0.20), (-0.16, 0.02)]),          # foot left
-        _line([(0.14, 0.20), (0.22, 0.02)]),            # foot right
+        (_circle(0.0, 1.30, 0.145), white),              # head
+        (_circle(0.10, 1.47, 0.05, 10), grey),           # hair bun
+        (_line([(-0.055, 1.33), (-0.045, 1.33)]), white),  # eye left (dot)
+        (_line([(0.045, 1.33), (0.055, 1.33)]), white),    # eye right (dot)
+        (_line([(-0.035, 1.235), (0.0, 1.215), (0.035, 1.235)]), white),  # gentle smile
+        (_line([(-0.13, 1.16), (0.13, 1.16)]), white),   # shoulders
+        (_line([(-0.13, 1.16), (-0.34, 0.18)]), white),  # sari left drape
+        (_line([(0.13, 1.16), (0.30, 0.18)]), white),    # sari right drape
+        (_line([(-0.115, 1.10), (-0.28, 0.24)]), grey),  # sari border line
+        (_line([(-0.34, 0.18), (0.30, 0.18)]), white),   # seated base
+        (_line([(-0.30, 0.45), (0.34, 0.45)]), white),   # lap fold
+        (_line([(0.12, 1.05), (0.42, 0.62)]), white),    # offering arm
+        (_line([(0.42, 0.62), (0.50, 0.60)]), white),    # open palm
+        (_line([(-0.14, 1.05), (-0.20, 0.55)]), grey),   # held stick (upper)
+        (_line([(-0.20, 0.55), (-0.22, 0.05)]), grey),   # held stick (lower)
+        (_line([(-0.10, 0.20), (-0.16, 0.02)]), white),  # foot left
+        (_line([(0.14, 0.20), (0.22, 0.02)]), white),    # foot right
     ]
-    for pts in strokes:
-        gp._add_stroke(drawing, pts)
+    _paint(obj, drawing, strokes)
     obj.location = VERANDA
     return obj
 
@@ -167,22 +224,27 @@ def build_shalik():
     data = obj.data
     layer = gp._get_layer(data, "Figure")
     drawing = gp._get_drawing(layer, 1)
-    gp._gp_material(bpy, data, "Shalik_Line", "#8A6A48")
+    brown = _finish_gp_material(bpy, data, "Shalik_Brown", "#8A6A48")
+    yellow = _finish_gp_material(bpy, data, "Shalik_Yellow", "#E8B93B")
+    darkm = _finish_gp_material(bpy, data, "Shalik_Dark", "#2B2320")
     body = [(0.15 * math.cos(2 * math.pi * i / 18), 0.0,
              0.20 + 0.105 * math.sin(2 * math.pi * i / 18)) for i in range(19)]
+    wing = [(-0.06 + 0.11 * math.cos(math.pi * (0.15 + 0.7 * i / 8)), 0.0,
+             0.21 + 0.055 * math.sin(math.pi * (0.15 + 0.7 * i / 8)))
+            for i in range(9)]
     strokes = [
-        body,                                           # body ellipse
-        _circle(0.155, 0.335, 0.072, 14),               # head
-        _line([(0.22, 0.34), (0.325, 0.315)]),          # beak top
-        _line([(0.325, 0.315), (0.215, 0.30)]),         # beak bottom
-        _line([(-0.13, 0.16), (-0.30, 0.03)]),          # tail upper
-        _line([(-0.13, 0.12), (-0.295, 0.005)]),        # tail lower
-        _line([(-0.02, 0.10), (-0.02, 0.0)]),           # leg left
-        _line([(0.05, 0.10), (0.05, 0.0)]),             # leg right
-        _circle(0.175, 0.35, 0.016, 8),                 # eye
+        (body, brown),                                  # body ellipse
+        (_circle(0.155, 0.335, 0.072, 14), brown),      # head
+        (wing, darkm),                                  # wing arc
+        (_line([(0.22, 0.34), (0.325, 0.315)]), yellow),  # beak top
+        (_line([(0.325, 0.315), (0.215, 0.30)]), yellow),  # beak bottom
+        (_line([(-0.13, 0.16), (-0.30, 0.03)]), darkm),  # tail upper
+        (_line([(-0.13, 0.12), (-0.295, 0.005)]), darkm),  # tail lower
+        (_line([(-0.02, 0.10), (-0.02, 0.0)]), yellow),  # leg left
+        (_line([(0.05, 0.10), (0.05, 0.0)]), yellow),    # leg right
+        (_circle(0.175, 0.35, 0.016, 8), darkm),         # eye
     ]
-    for pts in strokes:
-        gp._add_stroke(drawing, pts)
+    _paint(obj, drawing, strokes)
     obj.location = TREE_BRANCH
     return obj
 
@@ -199,6 +261,15 @@ def animate_characters(ma, bird):
     key(ma, 312, (VERANDA[0], VERANDA[1], VERANDA[2] + 0.02))
     key(ma, 313, (0.3, 3.1, 0.14))            # inside the house
     key(ma, 528, (0.3, 3.1, 0.14))
+    # Stage-2 fix: she must be FULLY invisible in S4-S5 (Stage 1 leaked
+    # her at the frame edge). Keyframe render-visibility instead.
+    ma.hide_render = False
+    ma.keyframe_insert(data_path="hide_render", frame=312)
+    ma.hide_render = True
+    ma.keyframe_insert(data_path="hide_render", frame=313)
+    ma.keyframe_insert(data_path="hide_render", frame=544)
+    ma.hide_render = False
+    ma.keyframe_insert(data_path="hide_render", frame=545)
     key(ma, 545, (0.3, 1.55, 0.05))           # returns, seated lower
     key(ma, 648, (0.3, 1.55, 0.07))
     key(ma, 720, (0.3, 1.55, 0.07))
@@ -210,7 +281,7 @@ def animate_characters(ma, bird):
     for f, dz in [(110, -0.05), (122, 0.0), (140, -0.05), (152, 0.0),
                   (170, -0.05), (182, 0.0)]:  # feeding pecks (S2)
         key(bird, f, (BIRD_HAND[0], BIRD_HAND[1], BIRD_HAND[2] + dz))
-    key(bird, 240, (0.95, 1.25, 0.35))        # S3 hops near her
+    key(bird, 240, (1.15, 1.18, 0.14))        # S3 hops on the veranda
     key(bird, 290, BIRD_HAND)
     key(bird, 313, (0.0, -0.5, 0.02))         # S4: alone in the courtyard
     key(bird, 360, (0.15, -0.45, 0.02))
@@ -219,9 +290,9 @@ def animate_characters(ma, bird):
     key(bird, 450, WINDOW_SILL)
     for f, dx in [(470, 0.05), (482, 0.0), (500, 0.05), (512, 0.0)]:
         key(bird, f, (WINDOW_SILL[0] + dx, WINDOW_SILL[1], WINDOW_SILL[2]))
-    key(bird, 545, (0.9, 1.28, 0.3))          # S6: comes down beside her
-    key(bird, 576, (0.9, 1.28, 0.3), (0.35, 0.0, 0.0))   # head bowed
-    key(bird, 648, (0.9, 1.28, 0.3), (0.35, 0.0, 0.0))
+    key(bird, 545, BIRD_HAND)                 # S6: comes down beside her
+    key(bird, 576, BIRD_HAND, (0.35, 0.0, 0.0))          # head bowed
+    key(bird, 648, BIRD_HAND, (0.35, 0.0, 0.0))
     key(bird, 680, (0.52, 1.48, 1.32), (0.15, 0.0, 0.0))  # S7: her shoulder
     key(bird, 720, (0.52, 1.48, 1.32), (0.15, 0.0, 0.0))
 
@@ -237,8 +308,8 @@ def setup_camera_and_lights():
             anim.keyframe_transform(target, start, location=tgt)
             anim.keyframe_transform(target, end, location=tgt)
     # S7 slow pull-back (re-key the segment with a moving end point).
-    anim.keyframe_transform(cam, 649, location=(0.0, -4.6, 1.7))
-    anim.keyframe_transform(cam, 720, location=(0.0, -8.5, 3.0))
+    anim.keyframe_transform(cam, 649, location=(0.0, -3.9, 1.6))
+    anim.keyframe_transform(cam, 720, location=(0.0, -7.0, 2.6))
     # Cuts between shots, smooth only inside S7: set interpolation.
     for action in {cam.animation_data.action if cam.animation_data else None,
                    target.animation_data.action if target and
@@ -251,7 +322,39 @@ def setup_camera_and_lights():
                     "BEZIER" if point.co[0] >= 649 else "CONSTANT")
     lighting_materials.three_point_lighting("LGT")
     lighting_materials.set_world_background("#35486B", 0.45)
+    _apply_moods(scene)
     return cam
+
+
+def _apply_moods(scene):
+    """Keyframe the world background colour/strength per shot (CONSTANT
+    interpolation, so each shot holds its own emotional grade)."""
+    world = scene.world
+    if world is None or not getattr(world, "use_nodes", False):
+        return
+    bg = None
+    for node in world.node_tree.nodes:
+        if node.type == "BACKGROUND":
+            bg = node
+            break
+    if bg is None:
+        return
+    from hybrid_studio.character_manager import hex_to_rgba
+    color_in = bg.inputs["Color"]
+    strength_in = bg.inputs["Strength"]
+    for (name, start, _e, _loc, _tgt, _hero) in SHOTS:
+        hex_color, strength = MOODS[name]
+        color_in.default_value = hex_to_rgba(hex_color)
+        color_in.keyframe_insert(data_path="default_value", frame=start)
+        strength_in.default_value = strength
+        strength_in.keyframe_insert(data_path="default_value", frame=start)
+    action = None
+    if getattr(world, "animation_data", None) and world.animation_data:
+        action = world.animation_data.action
+    if action is not None:
+        for fc in _bpyutil.collect_fcurves(action):
+            for point in fc.keyframe_points:
+                point.interpolation = "CONSTANT"
 
 
 def main():
