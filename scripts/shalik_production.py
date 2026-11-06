@@ -20,6 +20,13 @@ import math
 import os
 import sys
 
+# Repo-root bootstrap: Blender only adds this script's own folder
+# (scripts/) to sys.path in background mode, so `import hybrid_studio`
+# fails without this. (Found in the Stage-1 QC run, 2026-11-06.)
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+
 import bpy
 
 from hybrid_studio import check_environment, _bpyutil

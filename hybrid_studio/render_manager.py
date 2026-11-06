@@ -13,7 +13,7 @@
 import json
 import os
 
-from ._bpyutil import require_bpy, has_bpy
+from ._bpyutil import require_bpy, has_bpy, set_image_format
 from .config import get_preset
 from .studio_log import get_logger
 
@@ -103,7 +103,8 @@ def apply_render_config(scene, cfg, preset_name, output_dir):
     scene.render.resolution_x = int(preset["width"])
     scene.render.resolution_y = int(preset["height"])
     scene.render.resolution_percentage = 100
-    scene.render.image_settings.format = cfg.get("render", {}).get("file_format", "PNG")
+    set_image_format(scene.render.image_settings,
+                     cfg.get("render", {}).get("file_format", "PNG"))
     scene.render.image_settings.color_mode = "RGBA"
     scene.render.filepath = os.path.join(output_dir, "frame_")
     scene.render.use_file_extension = True
@@ -249,3 +250,4 @@ def render_frames(scene, output_dir, start, end, cfg, preset_name):
     else:
         log.info("Render complete: all %d frames valid", manifest["expected_count"])
     return manifest
+
